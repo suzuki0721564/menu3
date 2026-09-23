@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>栄養バランス1週間献立＆買い物リスト（PWA版）</title>
+    
+    <link id="manifest-link" rel="manifest">
+    <meta name="theme-color" content="#4A7C59">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="献立＆買い物">
+
+    <style>
+        :root {
+            --primary-color: #4A7C59;
+            --primary-hover: #3b6347;
+            --accent-color: #E8A87C;
+            --accent-hover: #d8966a;
+            --bg-color: #F9F9F6;
+            --card-bg: #FFFFFF;
+            --text-color: #333333;
+            --price-color: #D9534F;
+            --border-radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .notice-banner {
+            background-color: #E3F2FD;
+            border: 1px solid #90CAF9;
+            color: #1565C0;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            font-size: 0.875rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .api-setting-card {
+            background-color: #FFF8E1;
+            border: 1px solid #FFE082;
+            border-radius: var(--border-radius);
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .api-setting-card input[type="text"] {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            flex: 1;
+            min-width: 180px;
+            font-size: 0.875rem;
+        }
+
+        .controls {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            background-color: #A5D6A7;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #5C6BC0;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .btn-secondary:hover {
+            background-color: #3F51B5;
+        }
+
+        .unified-change-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .unified-change-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .dashboard-card {
+            background-color: #E8F5E9;
+            border: 2px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #C8E6C9;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .total-price {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--price-color);
+        }
+
+        .nutrition-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .nutri-tag {
+            background-color: #FFFFFF;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 5px;
+            background-color: #E0E0E0;
+            color: #555;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .menu-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-top: 5px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+        }
+
+        .day-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .dish-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 8px 0 4px 0;
+        }
+
+        .dish-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+
+        .side-dish {
+            font-size: 0.875rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .menu-price {
+            font-size: 0.85rem;
+            color: var(--price-color);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .badge-list {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            background-color: #81C784;
+        }
+
+        .recipe-link {
+            display: inline-block;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            text-decoration: underline;
+            margin-bottom: 8px;
+        }
+
+        .shopping-list-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .category-group {
+            margin-bottom: 20px;
+        }
+
+        .category-header {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+
+        .shopping-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .shopping-item label {
+            cursor: pointer;
+            margin-left: 6px;
+        }
+
+        .shopping-item.checked label {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .recipe-section-title {
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            color: #444;
+        }
+
+        .recipe-list {
+            font-size: 0.85rem;
+            padding-left: 18px;
+            margin: 4px 0 0 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>栄養バランス1週間献立＆買い物リスト</h1>
+
+    <div id="sat-notice" class="notice-banner" role="alert">
+        📅 本日は土曜日です！今週分の献立と買い物リストを自動更新しました。
+    </div>
+
+    <div class="api-setting-card">
+        <span>🌐 <strong>楽天レシピAPIモード：</strong> App IDを入力するとリアルタイムの人気ランキングレシピを取得します。</span>
+        <input type="text" id="api-id" placeholder="楽天App IDを入力" onchange="saveApiId()">
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="person-count">人数：</label>
+            <input type="number" id="person-count" value="2" min="1" max="10" onchange="updateAll()"> 人分
+        </div>
+        <button id="shuffle-all-btn" class="btn-primary" onclick="generateBalancedMenu(true)">今すぐ手動で全更新</button>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="dashboard-header">
+            <span style="font-weight:bold;">1週間の概算買い物目安：</span>
+            <span class="total-price" id="grand-total">￥0</span>
+        </div>
+        <div style="font-size:0.85rem; font-weight:bold; color:#333; margin-bottom:5px;">💡 今週の栄養バランス評価:</div>
+        <div class="nutrition-tags" id="nutrition-summary"></div>
+    </div>
+
+    <div class="tab-buttons">
+        <button class="tab-btn active" id="tab-menu" onclick="switchTab('menu')">今週の献立＆レシピ</button>
+        <button class="tab-btn" id="tab-shopping" onclick="switchTab('shopping')">1週間分の買い物リスト</button>
+    </div>
+
+    <div id="menu-section" class="content-section active">
+        <div id="menu-grid" class="menu-grid"></div>
+    </div>
+
+    <div id="shopping-section" class="content-section">
+        <div class="shopping-list-card">
+            <button class="btn-secondary" onclick="copyShoppingList()">📋 買い物リストをコピー（LINE共有用）</button>
+            <div id="shopping-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ----------------------------------------------------
+    // PWA設定 (Manifest & Service Worker 安全生成)
+    // ----------------------------------------------------
+    (function initPWA() {
+        try {
+            const manifestData = {
+                "short_name": "献立＆買い物",
+                "name": "栄養バランス1週間献立＆買い物リスト",
+                "start_url": "./",
+                "background_color": "#F9F9F6",
+                "theme_color": "#4A7C59",
+                "display": "standalone",
+                "orientation": "portrait"
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+            document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+            if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                const swCode = `
+                    self.addEventListener('install', (e) => self.skipWaiting());
+                    self.addEventListener('activate', (e) => self.clients.claim());
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(
+                            fetch(e.request).catch(() => caches.match(e.request))
+                        );
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'text/javascript' });
+                const swUrl = URL.createObjectURL(swBlob);
+
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register(swUrl)
+                        .catch(err => console.log('Service Worker の登録スキップ:', err));
+                });
+            }
+        } catch(e) {
+            console.warn('PWA初期化スキップ:', e);
+        }
+    })();
+
+    // ----------------------------------------------------
+    // アプリ本体ロジック
+    // ----------------------------------------------------
+    const categoryMapping = {
+        "豚薄切り肉": "🥩 肉類", "豚ひき肉": "🥩 肉類", "豚コマ肉": "🥩 肉類",
+        "鶏むね肉": "🥩 肉類", "鶏もも肉": "🥩 肉類", "鶏ひき肉": "🥩 肉類", "牛切り落とし肉": "🥩 肉類", "肉類全般": "🥩 肉類",
+        "鮭の切れ身": "🐟 魚介類", "サバの切り身": "🐟 魚介類", "アジ": "🐟 魚介類", "魚介類全般": "🐟 魚介類",
+        "キャベツ": "🥬 野菜・キノコ類", "玉ねぎ": "🥬 野菜・キノコ類", "しめじ": "🥬 野菜・キノコ類",
+        "ピーマン": "🥬 野菜・キノコ類", "人参": "🥬 野菜・キノコ類", "生姜": "🥬 野菜・キノコ類",
+        "トマト": "🥬 野菜・キノコ類", "ニラ": "🥬 野菜・キノコ類", "もやし": "🥬 野菜・キノコ類",
+        "大根": "🥬 野菜・キノコ類", "ごぼう": "🥬 野菜・キノコ類", "ほうれん草": "🥬 野菜・キノコ類",
+        "小松菜": "🥬 野菜・キノコ類", "レタス": "🥬 野菜・キノコ類", "きゅうり": "🥬 野菜・キノコ類",
+        "かぼちゃ": "🥬 野菜・キノコ類", "ブロッコリー": "🥬 野菜・キノコ類", "ミニトマト": "🥬 野菜・キノコ類", "季節の野菜": "🥬 野菜・キノコ類",
+        "木綿豆腐": "🥚 豆腐・卵・加工品・その他", "豆腐": "🥚 豆腐・卵・加工品・その他",
+        "卵": "🥚 豆腐・卵・加工品・その他", "ヨーグルト": "🥚 豆腐・卵・加工品・その他", "乾燥ワカメ": "🥚 豆腐・卵・加工品・その他"
+    };
+
+    const rakutenCategoryIds = {
+        "Pork": "10-275",
+        "Fish": "11-70",
+        "Chicken": "10-276",
+        "Soy": "35"
+    };
+
+    const mainsLocal = [
+        { 
+            name: "豚肉とキャベツの絶品生姜焼き", 
+            category: "Pork", 
+            tags: ["高タンパク", "ビタミンB1"], 
+            ingredients: [
+                { name: "豚薄切り肉", amount: 150, unit: "g", pricePerUnit: 1.8 }, 
+                { name: "キャベツ", amount: 120, unit: "g", pricePerUnit: 0.8 }, 
+                { name: "玉ねぎ", amount: 0.5, unit: "個", pricePerUnit: 40 },
+                { name: "生姜", amount: 0.5, unit: "かけ", pricePerUnit: 20 }
+            ], 
+            steps: [
+                "キャベツは千切りにし、玉ねぎは薄切り、生姜はすりおろす。",
+                "醤油、みりん、酒、すりおろし生姜を合わせてタレを作っておく。",
+                "フライパンに油を熱し、豚肉と玉ねぎを炒める。火が通ったらタレを回し入れ、香ばしく炒め合わせる。",
+                "キャベツを添えた皿に盛り付ける。"
+            ] 
+        },
+        { 
+            name: "野菜たっぷり！鮭のちゃんちゃん焼き", 
+            category: "Fish", 
+            tags: ["DHA・EPA", "アスタキサンチン"], 
+            ingredients: [
+                { name: "鮭の切れ身", amount: 1, unit: "切れ", pricePerUnit: 180 }, 
+                { name: "キャベツ", amount: 100, unit: "g", pricePerUnit: 0.8 }, 
+                { name: "しめじ", amount: 0.5, unit: "パック", pricePerUnit: 50 },
+                { name: "人参", amount: 0.3, unit: "本", pricePerUnit: 30 }
+            ], 
+            steps: [
+                "味噌、みりん、砂糖、酒を混ぜ合わせて味噌ダレを作っておく。",
+                "キャベツはざく切り、人参は短冊切り、しめじは石づきを取ってほぐす。",
+                "フライパンにキャベツや野菜を敷き、その上に塩コショウした鮭をのせる。",
+                "上から味噌ダレを回しかけ、蓋をして中火で5〜6分蒸し焼きにする。仕上げにバターを絡める。"
+            ] 
+        },
+        { 
+            name: "鶏むね肉とピーマンの黒酢あんかけ", 
+            category: "Chicken", 
+            tags: ["低脂質", "ビタミンC"], 
+            ingredients: [
+                { name: "鶏むね肉", amount: 140, unit: "g", pricePerUnit: 0.9 }, 
+                { name: "ピーマン", amount: 2, unit: "個", pricePerUnit: 35 }, 
+                { name: "人参", amount: 0.3, unit: "本", pricePerUnit: 30 }
+            ], 
+            steps: [
+                "鶏むね肉は一口大にそぎ切りにし、片栗粉を薄くまぶす。ピーマンと人参は乱切りにする。",
+                "黒酢、醤油、砂糖、鶏ガラスープの素、水を合わせてあわせ調味料を作る。",
+                "フライパンに油を熱し、鶏むね肉を両面こんがりと焼き、取り出す。",
+                "野菜を炒めてから鶏肉を戻し入れ、あわせ調味料を回し入れてとろみがつくまで絡める。"
+            ] 
+        },
+        { 
+            name: "ピリ辛コク旨！具だくさん麻婆豆腐", 
+            category: "Soy", 
+            tags: ["植物性タンパク", "カルシウム"], 
+            ingredients: [
+                { name: "木綿豆腐", amount: 1, unit: "丁", pricePerUnit: 40 }, 
+                { name: "豚ひき肉", amount: 90, unit: "g", pricePerUnit: 1.5 },
+                { name: "ニラ", amount: 0.3, unit: "束", pricePerUnit: 60 }
+            ], 
+            steps: [
+                "木綿豆腐は2cm角に切り、熱湯でさっと茹でて水気を切っておく。ニラは小口切りにする。",
+                "フライパンにごま油、ニンニク、豆板醤を熱し、豚ひき肉の色が変わるまで炒める。",
+                "水、鶏ガラスープの素、醤油、味噌を加え、豆腐を入れて弱火で2〜3分煮込む。",
+                "水溶き片栗粉でとろみをつけ、仕上げにニラを散らしてさっと混ぜる。"
+            ] 
+        },
+        { 
+            name: "ふっくらジューシー鯖の生姜味噌煮", 
+            category: "Fish", 
+            tags: ["DHA・EPA", "高タンパク"], 
+            ingredients: [
+                { name: "サバの切り身", amount: 1, unit: "切れ", pricePerUnit: 160 }, 
+                { name: "生姜", amount: 0.3, unit: "かけ", pricePerUnit: 20 },
+                { name: "大根", amount: 80, unit: "g", pricePerUnit: 0.5 }
+            ], 
+            steps: [
+                "サバは皮目に十字の切り込みを入れ、熱湯をさっとかけて臭みを取る。生姜は千切りにする。",
+                "鍋に水、酒、みりん、醤油、砂糖、味噌を入れて火にかけ、煮立たせる。",
+                "煮汁にサバと生姜、薄切りにした大根を並べ入れ、落とし蓋をして中火で10分ほど煮る。",
+                "タレにとろみがつくまで煮詰めたら、器に盛り付ける。"
+            ] 
+        }
+    ];
+
+    const sides = [
+        { 
+            sub: "【副菜】ワカメと豆腐のほっこりみそ汁", 
+            tag: "食物繊維", 
+            ingredients: [
+                { name: "豆腐", amount: 0.3, unit: "丁", pricePerUnit: 30 }, 
+                { name: "乾燥ワカメ", amount: 2, unit: "g", pricePerUnit: 10 }
+            ], 
+            step: "小鍋に出汁を沸かし、サイコロ状に切った豆腐と乾燥ワカメを入れて煮立て、味噌を溶き入れる。" 
+        },
+        { 
+            sub: "【副菜】ほうれん草の特製ごま和え", 
+            tag: "βカロテン", 
+            ingredients: [
+                { name: "ほうれん草", amount: 0.5, unit: "束", pricePerUnit: 80 }
+            ], 
+            step: "ほうれん草を塩茹でして冷水にとり、水気を絞って食べやすい長さに切る。すりごま、醤油、砂糖で和える。" 
+        },
+        { 
+            sub: "【副菜】小松菜ともやしのシャキシャキナムル", 
+            tag: "カルシウム", 
+            ingredients: [
+                { name: "小松菜", amount: 0.5, unit: "束", pricePerUnit: 70 }, 
+                { name: "もやし", amount: 0.5, unit: "袋", pricePerUnit: 20 }
+            ], 
+            step: "小松菜ともやしをさっと茹でて水気をしっかり絞る。ごま油、鶏ガラスープの素、塩、おろしニンニク少々で和える。" 
+        }
+    ];
+
+    const days = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"];
+    let currentWeeklyMenu = [];
+
+    window.onload = function() {
+        const savedApi = localStorage.getItem('recipe_api_id');
+        if (savedApi) document.getElementById('api-id').value = savedApi;
+
+        const savedMenu = localStorage.getItem('weekly_menu_data');
+        if (savedMenu) {
+            try {
+                currentWeeklyMenu = JSON.parse(savedMenu);
+            } catch (e) {
+                currentWeeklyMenu = [];
+            }
+        }
+
+        checkSaturdayAutoRefresh();
+    };
+
+    function saveApiId() {
+        localStorage.setItem('recipe_api_id', document.getElementById('api-id').value.trim());
+    }
+
+    function checkSaturdayAutoRefresh() {
+        const today = new Date();
+        const isSaturday = (today.getDay() === 6);
+        const todayStr = today.toISOString().split('T')[0];
+        const lastUpdate = localStorage.getItem('last_saturday_update');
+
+        if (isSaturday && lastUpdate !== todayStr) {
+            document.getElementById('sat-notice').style.display = 'block';
+            localStorage.setItem('last_saturday_update', todayStr);
+            generateBalancedMenu(false);
+        } else if (!currentWeeklyMenu || currentWeeklyMenu.length === 0) {
+            generateBalancedMenu(false);
+        } else {
+            updateAll();
+        }
+    }
+
+    async function fetchRakutenRecipe(category) {
+        const appId = document.getElementById('api-id').value.trim();
+        if (!appId) return null;
+
+        const categoryId = rakutenCategoryIds[category] || "10";
+        const url = `https://app.rakuten.co.jp/services/api/Recipe/CategoryRanking/V20170426?applicationId=${appId}&categoryId=${categoryId}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('API取得失敗');
+            const data = await response.json();
+            
+            if (data.result && data.result.length > 0) {
+                const item = data.result[Math.floor(Math.random() * data.result.length)];
+                
+                const parsedIngredients = item.recipeMaterial.map(matStr => {
+                    return {
+                        name: matStr,
+                        amount: 1,
+                        unit: "人前分",
+                        pricePerUnit: 120
+                    };
+                });
+
+                return {
+                    name: item.recipeTitle,
+                    category: category,
+                    tags: ["楽天人気レシピ", item.recipeCost || "簡単"],
+                    ingredients: parsedIngredients.slice(0, 3),
+                    steps: [item.recipeDescription || "詳細はレシピリンクを参照してください。下処理をして火が通るまで丁寧に加熱します。"],
+                    imageUrl: item.foodImageUrl,
+                    url: item.recipeUrl
+                };
+            }
+        } catch (err) {
+            console.warn("楽天APIからの取得をスキップしローカルデータを使用します:", err);
+        }
+        return null;
+    }
+
+    async function generateSingleRandomRecipe() {
+        const categories = ["Pork", "Fish", "Chicken", "Soy"];
+        const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+        
+        let mainRecipe = await fetchRakutenRecipe(randomCategory);
+
+        if (!mainRecipe) {
+            const filteredMains = mainsLocal.filter(m => m.category === randomCategory);
+            const pool = filteredMains.length > 0 ? filteredMains : mainsLocal;
+            mainRecipe = pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        const randomSide = sides[Math.floor(Math.random() * sides.length)];
+
+        return {
+            name: mainRecipe.name,
+            sub: randomSide.sub,
+            category: mainRecipe.category,
+            tags: Array.from(new Set([...mainRecipe.tags, randomSide.tag])),
+            ingredients: [...mainRecipe.ingredients, ...randomSide.ingredients],
+            steps: [...mainRecipe.steps, randomSide.step],
+            imageUrl: mainRecipe.imageUrl || null,
+            url: mainRecipe.url || null
+        };
+    }
+
+    async function generateBalancedMenu(isManual = false) {
+        const btn = document.getElementById('shuffle-all-btn');
+        btn.disabled = true;
+        btn.innerText = '🔄 取得中...';
+
+        currentWeeklyMenu = [];
+        for (let i = 0; i < 7; i++) {
+            const recipe = await generateSingleRandomRecipe();
+            currentWeeklyMenu.push(recipe);
+        }
+        
+        localStorage.setItem('weekly_menu_data', JSON.stringify(currentWeeklyMenu));
+        updateAll();
+
+        btn.disabled = false;
+        btn.innerText = '今すぐ手動で全更新';
+
+        if (isManual) {
+            alert('献立と買い物リストを新しく再生成しました！');
+        }
+    }
+
+    async function updateRecipe(dayIndex, btnElement) {
+        if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.innerText = '🔄 更新中...';
+        }
+
+        currentWeeklyMenu[dayIndex] = await generateSingleRandomRecipe();
+        localStorage.setItem('weekly_menu_data', JSON.stringify(currentWeeklyMenu));
+        updateAll();
+    }
+
+    function updateAll() {
+        const persons = parseInt(document.getElementById('person-count').value, 10) || 1;
+        renderMenu(persons);
+        renderShoppingList(persons);
+        updateNutritionSummary();
+    }
+
+    function renderMenu(persons) {
+        const menuGrid = document.getElementById('menu-grid');
+        menuGrid.innerHTML = '';
+
+        currentWeeklyMenu.forEach((recipe, index) => {
+            const card = document.createElement('div');
+            card.className = 'menu-card';
+
+            let ingredientsHTML = '';
+            let recipeTotalPrice = 0;
+
+            recipe.ingredients.forEach(ing => {
+                const totalAmount = Math.round((ing.amount * persons) * 10) / 10;
+                const ingredientPrice = Math.round(totalAmount * ing.pricePerUnit);
+                recipeTotalPrice += ingredientPrice;
+
+                ingredientsHTML += `<li>${ing.name}: ${totalAmount} ${ing.unit}</li>`;
+            });
+
+            let stepsHTML = recipe.steps.map(step => `<li>${step}</li>`).join('');
+            let tagsHTML = recipe.tags.map(t => `<span class="badge">${t}</span>`).join(' ');
+            let imageHTML = recipe.imageUrl ? `<img src="${recipe.imageUrl}" alt="${recipe.name}" class="dish-image">` : '';
+            let linkHTML = recipe.url ? `<a href="${recipe.url}" target="_blank" rel="noopener" class="recipe-link">📖 楽天レシピで詳細を見る</a>` : '';
+
+            card.innerHTML = `
+                <div>
+                    <div class="card-header">
+                        <span class="day-title">${days[index]}</span>
+                        <button class="unified-change-btn" onclick="updateRecipe(${index}, this)">🔄 単体更新</button>
+                    </div>
+                    ${imageHTML}
+                    <div class="dish-title">${recipe.name}</div>
+                    <div class="side-dish">${recipe.sub}</div>
+                    ${linkHTML}
+                    <div class="menu-price">目安食費: 約 ${recipeTotalPrice.toLocaleString()} 円 (${persons}人分)</div>
+                    <div class="badge-list">${tagsHTML}</div>
+                    <div class="recipe-section-title">材料 (${persons}人分)</div>
+                    <ul class="recipe-list">${ingredientsHTML}</ul>
+                    <div class="recipe-section-title">詳しい作り方・手順</div>
+                    <ol class="recipe-list">${stepsHTML}</ol>
+                </div>
+            `;
+            menuGrid.appendChild(card);
+        });
+    }
+
+    function renderShoppingList(persons) {
+        const shoppingListContainer = document.getElementById('shopping-list');
+        // ボタン要素を保持するため、ボタン以外を更新
+        const existingButton = shoppingListContainer.querySelector('button') || document.createElement('button');
+        // もしボタンがDOMにない場合の考慮を含め、全体を再構築するかボタンを退避
+    }
+
+    // 再描画の処理を綺麗に分離
+    function renderShoppingList(persons) {
+        const shoppingListContainer = document.getElementById('shopping-list');
+        shoppingListContainer.innerHTML = '';
+
+        const totals = {};
+        let grandTotal = 0;
+
+        currentWeeklyMenu.forEach(recipe => {
+            recipe.ingredients.forEach(ing => {
+                const key = `${ing.name}_${ing.unit}`;
+                const amount = ing.amount * persons;
+                const price = amount * ing.pricePerUnit;
+
+                if (totals[key]) {
+                    totals[key].amount += amount;
+                    totals[key].price += price;
+                } else {
+                    totals[key] = {
+                        name: ing.name,
+                        amount: amount,
+                        unit: ing.unit,
+                        price: price,
+                        category: categoryMapping[ing.name] || "🥚 豆腐・卵・加工品・その他"
+                    };
+                }
+            });
+        });
+
+        const categorized = {};
+        Object.values(totals).forEach(item => {
+            const cat = item.category;
+            if (!categorized[cat]) categorized[cat] = [];
+            categorized[cat].push(item);
+        });
+
+        let itemIndex = 0;
+        const categoryOrder = ["🥩 肉類", "🐟 魚介類", "🥬 野菜・キノコ類", "🥚 豆腐・卵・加工品・その他"];
+
+        categoryOrder.forEach(categoryName => {
+            if (categorized[categoryName] && categorized[categoryName].length > 0) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'category-group';
+
+                let groupHTML = `<div class="category-header">${categoryName}</div>`;
+
+                categorized[categoryName].forEach(item => {
+                    const roundedPrice = Math.round(item.price);
+                    const roundedAmount = Math.round(item.amount * 10) / 10;
+                    grandTotal += roundedPrice;
+
+                    groupHTML += `
+                        <div class="shopping-item">
+                            <div>
+                                <input type="checkbox" id="item-${itemIndex}" onchange="toggleCheck(this)">
+                                <label for="item-${itemIndex}">${item.name} ： <strong>${roundedAmount} ${item.unit}</strong></label>
+                            </div>
+                            <div style="color:#666; font-size:0.875rem;">約 ${roundedPrice.toLocaleString()} 円</div>
+                        </div>
+                    `;
+                    itemIndex++;
+                });
+
+                groupDiv.innerHTML = groupHTML;
+                shoppingListContainer.appendChild(groupDiv);
+            }
+        });
+
+        document.getElementById('grand-total').innerText = `￥${grandTotal.toLocaleString()}`;
+    }
+
+    function updateNutritionSummary() {
+        const summaryContainer = document.getElementById('nutrition-summary');
+        const fishCount = currentWeeklyMenu.filter(r => r.category === "Fish").length;
+        const soyCount = currentWeeklyMenu.filter(r => r.category === "Soy").length;
+
+        summaryContainer.innerHTML = `
+            <span class="nutri-tag">✅ 野菜・食物繊維たっぷり</span>
+            <span class="nutri-tag">✅ お魚メニュー (${fishCount}回/週)</span>
+            <span class="nutri-tag">✅ 大豆・豆腐類 (${soyCount}回/週)</span>
+            <span class="nutri-tag">✅ 主菜・副菜のバランス○</span>
+        `;
+    }
+
+    function toggleCheck(checkbox) {
+        const item = checkbox.closest('.shopping-item');
+        if (checkbox.checked) {
+            item.classList.add('checked');
+        } else {
+            item.classList.remove('checked');
+        }
+    }
+
+    function switchTab(tabName) {
+        document.getElementById('tab-menu').classList.toggle('active', tabName === 'menu');
+        document.getElementById('tab-shopping').classList.toggle('active', tabName === 'shopping');
+
+        document.getElementById('menu-section').classList.toggle('active', tabName === 'menu');
+        document.getElementById('shopping-section').classList.toggle('active', tabName === 'shopping');
+    }
+
+    // 買い物リストをクリップボードにコピーする関数
+    function copyShoppingList() {
+        const persons = parseInt(document.getElementById('person-count').value, 10) || 1;
+        const totals = {};
+        let grandTotal = 0;
+
+        currentWeeklyMenu.forEach(recipe => {
+            recipe.ingredients.forEach(ing => {
+                const key = `${ing.name}_${ing.unit}`;
+                const amount = ing.amount * persons;
+                const price = amount * ing.pricePerUnit;
+
+                if (totals[key]) {
+                    totals[key].amount += amount;
+                    totals[key].price += price;
+                } else {
+                    totals[key] = {
+                        name: ing.name,
+                        amount: amount,
+                        unit: ing.unit,
+                        price: price,
+                        category: categoryMapping[ing.name] || "🥚 豆腐・卵・加工品・その他"
+                    };
+                }
+            });
+        });
+
+        const categorized = {};
+        Object.values(totals).forEach(item => {
+            const cat = item.category;
+            if (!categorized[cat]) categorized[cat] = [];
+            categorized[cat].push(item);
+        });
+
+        let textToCopy = `🛒 【1週間分の買い物リスト】 (${persons}人分)\n`;
+        const categoryOrder = ["🥩 肉類", "🐟 魚介類", "🥬 野菜・キノコ類", "🥚 豆腐・卵・加工品・その他"];
+
+        categoryOrder.forEach(categoryName => {
+            if (categorized[categoryName] && categorized[categoryName].length > 0) {
+                textToCopy += `\n[${categoryName}]\n`;
+                categorized[categoryName].forEach(item => {
+                    const roundedAmount = Math.round(item.amount * 10) / 10;
+                    const roundedPrice = Math.round(item.price);
+                    textToCopy += `・${item.name}：${roundedAmount}${item.unit} (約${roundedPrice}円)\n`;
+                    grandTotal += roundedPrice;
+                });
+            }
+        });
+
+        textToCopy += `\n💰 合計目安金額: 約 ${grandTotal.toLocaleString()} 円`;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('買い物リストをクリップボードにコピーしました！LINEなどに貼り付けて共有できます。');
+        }).catch(err => {
+            console.error('コピーに失敗しました:', err);
+            alert('コピーに失敗しました。お使いのブラウザ環境をご確認ください。');
+        });
+    }
+</script>
+
+</body>
+</html>
